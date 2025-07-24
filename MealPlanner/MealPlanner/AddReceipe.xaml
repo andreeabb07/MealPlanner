@@ -1,0 +1,26 @@
+﻿<Page x:Class="MealPlanner.AddReceipe"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:local="clr-namespace:MealPlanner"
+      mc:Ignorable="d" 
+      d:DesignHeight="450" d:DesignWidth="800"
+      Background="#f1faf8"
+      Title="AddReceipe">
+
+    <Grid>
+        <Label  Grid.Row="0" HorizontalAlignment ="Left"  Foreground="#DC143C" FontStyle="Italic" FontWeight="Heavy" FontSize="20" Content="New Receipe" Margin="318,53,0,349" Width="324" />
+        <Button Click="GoHome" BorderThickness="0" Background="Transparent" Margin="727,380,45,40">
+            <Image Source="/house.png" Width="26" Height="26"/>
+        </Button>
+        <Button Content="Add" HorizontalAlignment="Left" Height="20" Margin="137,154,0,0" VerticalAlignment="Top" Width="61"/>
+        <Label Content="Ingredient" HorizontalAlignment="Left" Height="29" Margin="65,96,0,0" VerticalAlignment="Top" Width="120"/>
+        <TextBox x:Name="QunatityName" HorizontalAlignment="Left" Height="20
+                 " Margin="172,124,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="93" TextChanged="QunatityName_TextChanged"/>
+        <Label Content="Quantity" HorizontalAlignment="Left" Height="29" Margin="169,96,0,0" VerticalAlignment="Top" Width="120"/>
+        <ListBox x:Name="ListIngredients" HorizontalAlignment="Left" Height="208" Margin="65,215,0,0" VerticalAlignment="Top" Width="200" SelectionChanged="ListNewIngredients_SelectionChanged"/>
+        <Label Content="List" HorizontalAlignment="Left" Height="29" Margin="64,190,0,0" VerticalAlignment="Top" Width="120"/>
+        <TextBox x:Name="IngredientName" HorizontalAlignment="Left" Height="20" Margin="65,124,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="93" TextChanged="IngredientName_TextChanged_1"/>
+    </Grid>
+</Page>

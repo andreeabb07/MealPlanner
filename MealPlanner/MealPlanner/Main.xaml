@@ -1,0 +1,63 @@
+﻿<Page x:Class="MealPlanner.Main"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:local="clr-namespace:MealPlanner"
+      mc:Ignorable="d" 
+      Background="#f1faf8"
+      d:DesignHeight="450" d:DesignWidth="800"
+      Title="Main" Foreground="White">
+    <Page.OpacityMask>
+        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+            <GradientStop Color="Black"/>
+            <GradientStop Color="White" Offset="1"/>
+        </LinearGradientBrush>
+    </Page.OpacityMask>
+
+    <Grid Margin="10 12 10 8">
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" MinHeight="36.6" />
+            <RowDefinition Height="Auto" MinHeight="99.84" />
+        </Grid.RowDefinitions>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Label HorizontalAlignment ="Center"  Foreground="#DC143C" FontStyle="Italic" FontWeight="Heavy" FontSize="40" Content="StuffHub "  Width="193" Grid.Row="1" />
+
+        <StackPanel HorizontalAlignment="Center" Grid.Row="1" Margin="0 100">
+            <Button BorderBrush="#0B525B" Background ="white" Foreground="#0B525B" FontWeight="DemiBold" x:Name="btn4" Margin="0,5,0,0" Click="GoToInventory_Click" Width="172">Budget
+                <Button.Resources>
+                    <Style TargetType="Border">
+                        <Setter Property="CornerRadius" Value="5"/>
+                    </Style>
+                </Button.Resources>
+            </Button>
+            <Button BorderBrush="#0B525B" Background ="white" Foreground="#0B525B" FontWeight="DemiBold" x:Name="btn3" Margin="0,5,0,0" Click="GoToInventory_Click" Width="172">Home Inventory
+                <Button.Resources>
+                    <Style TargetType="Border">
+                        <Setter Property="CornerRadius" Value="5"/>
+                    </Style>
+                </Button.Resources>
+            </Button>
+            <Button BorderBrush="#0B525B" Background ="white" Foreground="#0B525B" FontWeight="DemiBold" x:Name="btn1" Margin="0,5,0,0" Click="GoToGroceries_Click" Width="172">Groceries List
+                <Button.Resources>
+                    <Style TargetType="Border">
+                        <Setter Property="CornerRadius" Value="5"/>
+                    </Style>
+                </Button.Resources>
+            </Button>
+            <Button BorderBrush="#0B525B" Background ="white" Foreground="#0B525B" FontWeight="DemiBold" x:Name="btn2" Margin="0,5,0,0" Click="GoToReceipes_Click" Width="172">Receipes
+                <Button.Resources>
+                    <Style TargetType="Border">
+                        <Setter Property="CornerRadius" Value="5"/>
+                    </Style>
+                </Button.Resources>
+            </Button>
+        </StackPanel>
+
+    </Grid>
+</Page>
