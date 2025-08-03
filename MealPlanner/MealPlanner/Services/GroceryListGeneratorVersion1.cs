@@ -8,8 +8,8 @@ namespace MealPlanner.Services
 {
     public class GroceryListGenerator : IGroceryListGenerator
     {
-        private readonly IDatabase _database;
-        public GroceryListGenerator(IDatabase database)
+        private readonly Database _database;
+        public GroceryListGenerator(Database database)
         {
             _database = database;
         }
@@ -33,8 +33,6 @@ namespace MealPlanner.Services
                 AddMealToGroceryList(day.Dinner, day.DinnerPeople);
             }
             return ingredients;
-
-            
 
             // the AddMealToGroceryList, takes as argument the name of the meal (pancake) and nb. of people (2)
             void AddMealToGroceryList(string mealName, int people)

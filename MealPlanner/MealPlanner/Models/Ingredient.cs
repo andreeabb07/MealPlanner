@@ -8,45 +8,19 @@ using System.Runtime.CompilerServices;
 
 namespace MealPlanner.Models
 { 
-
-    public class Ingredient : INotifyPropertyChanged
+    public class Ingredient
     {
-        private string _name;
-        private string _unit;
-        private double _inventory;
-        private double _toBeBought;
-
         public int Id { get; set; }
 
-        public string Name
-        {
-            get => _name;
-            set { _name = value; OnPropertyChanged(); }
-        }
+        public string Name { get; set; }
 
-        public string Unit
-        {
-            get => _unit;
-            set { _unit = value; OnPropertyChanged(); }
-        }
+        public string Unit { get; set; }
 
-        public double Inventory
-        {
-            get => _inventory;
-            set { _inventory = value; OnPropertyChanged(); }
-        }
+        public double Inventory { get; set; }
 
-        public double ToBeBought
-        {
-            get => _toBeBought;
-            set { _toBeBought = value; OnPropertyChanged(); }
-        }
+        // a column property in my database that holds the value for how much of that ingredient needs to be bought based on my meal plan for that week
+        public double ToBeBought { get; set; }
 
-        public event PropertyChangedEventHandler PropertyChanged;
-        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
     }
 
 }

@@ -1,4 +1,5 @@
 ﻿using MealPlanner.Data;
+using MealPlanner.Interfaces;
 using MealPlanner.Models;
 using System;
 using System.Collections.Generic;
@@ -13,7 +14,7 @@ namespace MealPlanner
 {
     public partial class Inventory : Page
     {
-        private Database _db;
+        private IDatabase _db;
         public ObservableCollection<Ingredient> InventoryList { get; set; } = new();
 
         public Inventory()

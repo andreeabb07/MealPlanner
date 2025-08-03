@@ -1,13 +1,8 @@
 ﻿using MealPlanner.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace MealPlanner.Interfaces
 {
-    public interface IMealRepositoryReading
+    public interface IMealRepositoryIO
     {
         // A method that returns a generic list of objects of type Meal
         // A method that goes and gets me the name of all meals
@@ -21,5 +16,15 @@ namespace MealPlanner.Interfaces
         List<MealIngredient> GetIngredientsForMeal(int mealId);
 
         List<MealIngredient> GetIngredientsForBreakfast(int mealId);
+
+
+        // Add a new meal to the database
+        void AddMeal(Meal meal);
+
+        // Add a new ingredient to the database
+        void AddIngredient(Ingredient ingredient);
+
+        // Add ingredient details to a meal (like quantity)
+        void AddMealIngredient(string mealName, string ingredientName, double quantity);
     }
 }

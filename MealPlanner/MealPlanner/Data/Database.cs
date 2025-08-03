@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace MealPlanner.Data
 {
-    public class Database : IMealRepositoryReading, IMealRepositoryWritting, IInventoryUsageTracker
+    public class Database : IDatabase
     {
         private readonly List<Meal> meals = new List<Meal>();
         private readonly List<Ingredient> ingredients = new List<Ingredient>();
@@ -71,53 +71,7 @@ namespace MealPlanner.Data
 
             return GetIngredientsForMeal(mealId);
         }
-        public void SaveGroceryListToToBeBought(
-            Dictionary<string, (string Breakfast, int BreakfastPeople, string Lunch, int LunchPeople, string Dinner, int DinnerPeople)> weeklySelections,
-            Dictionary<string, (double Quantity, string Unit)> groceryList)
-        {
-            // 1. Save the grocery quantities to Ingredients
-            foreach (var kvp in groceryList)
-            {
-                var ingredient = ingredients.FirstOrDefault(i => i.Name == kvp.Key);
-                if (ingredient != null)
-                    ingredient.ToBeBought = kvp.Value.Quantity;
-            }
 
-            // 2. Reset all day values
-            foreach (var meal in meals)
-            {
-                meal.Monday = meal.Tuesday = meal.Wednesday = meal.Thursday =
-                meal.Friday = meal.Saturday = meal.Sunday = 0;
-            }
-
-            // 3. For each day in your weeklySelections, assign people counts to each meal
-            foreach (var entry in weeklySelections)
-            {
-                string day = entry.Key;
-                var (breakfast, breakfastPeople, lunch, lunchPeople, dinner, dinnerPeople) = entry.Value;
-
-                void AssignMealToDay(string mealName, int people)
-                {
-                    var meal = meals.FirstOrDefault(m => m.Name == mealName);
-                    if (meal == null || people <= 0) return;
-
-                    switch (day.ToLower())
-                    {
-                        case "monday": meal.Monday += people; break;
-                        case "tuesday": meal.Tuesday += people; break;
-                        case "wednesday": meal.Wednesday += people; break;
-                        case "thursday": meal.Thursday += people; break;
-                        case "friday": meal.Friday += people; break;
-                        case "saturday": meal.Saturday += people; break;
-                        case "sunday": meal.Sunday += people; break;
-                    }
-                }
-
-                AssignMealToDay(breakfast, breakfastPeople);
-                AssignMealToDay(lunch, lunchPeople);
-                AssignMealToDay(dinner, dinnerPeople);
-            }
-        }
         public void Restock()
         {
             foreach (var ingredient in ingredients)
@@ -163,6 +117,38 @@ namespace MealPlanner.Data
             if (existing != null)
             {
                 existing.Inventory = updatedIngredient.Inventory;
+            }
+        }
+        public void SaveGroceryListToToBeBought(Dictionary<IInventoryUsageTracker.Days, OneDaysMeals> weeklySelections,
+                                               Dictionary<string, (double Quantity, string Unit)> groceryList)
+        {
+            // 1. Save the grocery quantities to Ingredients
+            foreach (var kvp in groceryList)
+            {
+                var ingredient = ingredients.FirstOrDefault(i => i.Name == kvp.Key);
+                if (ingredient != null)
+
+                    ingredient.ToBeBought = kvp.Value.Quantity;
+            }
+
+            // 2. Reset all day values
+            foreach (var meal in meals)
+            {
+                meal.Monday = meal.Tuesday = meal.Wednesday = meal.Thursday =
+                meal.Friday = meal.Saturday = meal.Sunday = 0;
+            }
+
+            // 3. For each day in your weeklySelections, assign people counts to each meal
+            foreach (var entry in weeklySelections)
+            {
+                IInventoryUsageTracker.Days day = entry.Key;
+                OneDaysMeals meal = entry.Value;
+
+
+
+                AssignMealToDay(day, meal.Breakfast, meal.BreakfastPeople);
+                AssignMealToDay(day, meal.Lunch, meal.LunchPeople);
+                AssignMealToDay(day, meal.Dinner, meal.DinnerPeople);
             }
         }
 
@@ -265,5 +251,22 @@ namespace MealPlanner.Data
             };
         }
 
+        private void AssignMealToDay( IInventoryUsageTracker.Days day, string mealName, int people)
+        {
+            var meal = meals.FirstOrDefault(m => m.Name == mealName);
+            if (meal == null || people <= 0) return;
+
+            switch(day)
+            {
+                case IInventoryUsageTracker.Days.MONDAY: meal.Monday += people; break;
+                case IInventoryUsageTracker.Days.TUESDAY: meal.Tuesday += people; break;
+                case IInventoryUsageTracker.Days.WEDNESDAY: meal.Wednesday += people; break;
+                case IInventoryUsageTracker.Days.THURSDAY: meal.Thursday += people; break;
+                case IInventoryUsageTracker.Days.FRIDAY: meal.Friday += people; break;
+                case IInventoryUsageTracker.Days.SATURDAY: meal.Saturday += people; break;
+                case IInventoryUsageTracker.Days.SUNDAY: meal.Sunday += people; break;
+            }
+        }
+
     }
-}
+} 

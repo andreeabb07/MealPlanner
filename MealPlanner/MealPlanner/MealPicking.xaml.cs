@@ -1,4 +1,5 @@
 ﻿using MealPlanner.Data;
+using MealPlanner.Interfaces;
 using MealPlanner.Models;
 using MealPlanner.Services;
 using System;
@@ -28,8 +29,8 @@ namespace MealPlanner
         private readonly Database _database = new Database();
 
         // I need a variable to hold in memory the values read from the ComboBox
-        private Dictionary<string, (string Breakfast, int BreakfastPeople, string Lunch, int LunchPeople, string Dinner, int DinnerPeople)> weeklySelections =
-            new Dictionary<string, (string, int, string, int, string, int)>();
+        private Dictionary<IInventoryUsageTracker.Days, OneDaysMeals> weeklySelections =
+            new Dictionary<IInventoryUsageTracker.Days, OneDaysMeals>();
 
         // This is the constructor of this class, and it is called when a new instance of the class is created
         // InitializeComponent() is a method that is defined by wpf, and it "matches" the code from here to the .xaml interface
@@ -72,7 +73,7 @@ namespace MealPlanner
             LunchPeopleComboBox.ItemsSource = PeopleCountOptions;
             DinnerPeopleComboBox.ItemsSource = PeopleCountOptions;
 
-            string currentDay = _daysOfWeek[_currentDayIndex];
+            IInventoryUsageTracker.Days currentDay =(IInventoryUsageTracker.Days) _currentDayIndex;
 
             if (weeklySelections.TryGetValue(currentDay, out var meals))
             {
@@ -98,7 +99,7 @@ namespace MealPlanner
 
         private void SaveCurrentDaySelection()
         {
-            string day = _daysOfWeek[_currentDayIndex];
+            int day = _currentDayIndex;
 
             string breakfast = BreakfastComboBox.SelectedItem as string ?? "No selection";
             string lunch = LunchComboBox.SelectedItem as string ?? "No selection";
@@ -108,7 +109,7 @@ namespace MealPlanner
             int lunchPeople = GetSelectedPeopleCount(LunchPeopleComboBox, 1);
             int dinnerPeople = GetSelectedPeopleCount(DinnerPeopleComboBox, 2);
 
-            weeklySelections[day] = (breakfast, breakfastPeople, lunch, lunchPeople, dinner, dinnerPeople);
+            weeklySelections[(IInventoryUsageTracker.Days) _currentDayIndex] = new (breakfast, breakfastPeople, lunch, lunchPeople, dinner, dinnerPeople);
         }
 
         private void NextButton_Click(object sender, RoutedEventArgs e)
@@ -128,14 +129,17 @@ namespace MealPlanner
 
                 // Generate grocery list dictionary
                 var allMeals = _database.GetAllMeals();
-                var groceryGenerator = new GroceryListGenerator(allMeals, _database);
+                var groceryGenerator = new GroceryListGenerator(_database);
                 var groceryList = groceryGenerator.GenerateGroceryList(weeklySelections);
 
                 // Save selections and grocery list into the database state
                 _database.SaveGroceryListToToBeBought(weeklySelections, groceryList);
 
                 // Export grocery list to text file
-                var groceryExporter = new TextFileExporter();
+                // Since you created an interface to represent a generic version of file exporter classes,
+                // I think it would be better for you to make your variables of type interface and use your specific class
+                // (the one that implements said interface) for the object declaration
+                IFileExporter groceryExporter = new TextFileExporter();
                 var groceryFilePath = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
                     "GroceryList.txt");
@@ -166,11 +170,11 @@ namespace MealPlanner
         {
             StringBuilder sb = new StringBuilder();
 
-            foreach (var day in _daysOfWeek)
+            foreach (IInventoryUsageTracker.Days day in Enum.GetValues(typeof(IInventoryUsageTracker.Days)))
             {
                 if (weeklySelections.TryGetValue(day, out var meals))
                 {
-                    sb.AppendLine(day);
+                    sb.AppendLine(_daysOfWeek[(int)day]);
                     sb.AppendLine($"  Breakfast: {meals.Breakfast} ({meals.BreakfastPeople})");
                     sb.AppendLine($"  Lunch: {meals.Lunch} ({meals.LunchPeople})");
                     sb.AppendLine($"  Dinner: {meals.Dinner} ({meals.DinnerPeople})");
