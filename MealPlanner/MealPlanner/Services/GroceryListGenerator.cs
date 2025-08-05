@@ -50,16 +50,17 @@ namespace MealPlanner.Services
                 // then if the dictionary that was intially created already exists the key, then I take the value corresponding to that ingredient (that is a tuple), and I add to iy the additional quantity
                 foreach (var mi in mealIngredients)
                 {
-                    string name = mi.Ingredient.Name;
+                    string? name = mi.Ingredient.Name;
+                    name = null;
                     double quantity = Math.Round(mi.QuantityPerPerson * people, 1);
-                    string unit = mi.Ingredient.Unit ?? "unit";
+                    string? unit = mi.Ingredient.Unit ?? "unit";
 
-                    if (ingredients.ContainsKey(name))
+                    if (name is not null && ingredients.ContainsKey(name))
                     {
                         var current = ingredients[name];
                         ingredients[name] = (current.Quantity + quantity, unit);
                     }
-                    else
+                    else if (name is not null)
                     {
                         ingredients[name] = (quantity, unit);
                     }
