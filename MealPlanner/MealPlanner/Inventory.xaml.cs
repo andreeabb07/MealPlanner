@@ -58,19 +58,19 @@ namespace MealPlanner
         {
             if (sender is Button dayButton)
             {
-                string shortDay = dayButton.Content.ToString();
+                string? shortDay = dayButton.Content.ToString();
                 var dayMap = new Dictionary<string, string>
-        {
-            { "Mon", "monday" },
-            { "Tue", "tuesday" },
-            { "Wed", "wednesday" },
-            { "Thu", "thursday" },
-            { "Fri", "friday" },
-            { "Sat", "saturday" },
-            { "Sun", "sunday" }
-        };
+                                        {
+                                            { "Mon", "monday" },
+                                            { "Tue", "tuesday" },
+                                            { "Wed", "wednesday" },
+                                            { "Thu", "thursday" },
+                                            { "Fri", "friday" },
+                                            { "Sat", "saturday" },
+                                            { "Sun", "sunday" }
+                                        };
 
-                if (dayMap.TryGetValue(shortDay, out string fullDay))
+                if (shortDay is not null && dayMap.TryGetValue(shortDay, out string? fullDay))
                 {
                     _db.CookDayPlan(fullDay);
                     LoadIngredients();
