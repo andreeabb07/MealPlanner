@@ -21,8 +21,8 @@ jobs:
       with:
         dotnet-version: 8.0.x
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore ./MealPlanner
     - name: Build
-      run: dotnet build --no-restore MealPlanner/
+      run: dotnet build --no-restore ./MealPlanner
     - name: Test
-      run: dotnet test --no-build --verbosity normal MealPlanner/
+      run: dotnet test --no-build --verbosity normal ./MealPlanner
