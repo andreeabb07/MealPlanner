@@ -25,7 +25,6 @@ namespace MealPlanner
             LoadIngredients();
         }
 
-
         private void InventoryGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
            

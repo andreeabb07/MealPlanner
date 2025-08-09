@@ -1,5 +1,6 @@
 ﻿using MealPlanner.Interfaces;
 using MealPlanner.Models;
+using Npgsql;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,264 +10,357 @@ using System.Threading.Tasks;
 namespace MealPlanner.Data
 {
     public class Database : IDatabase
-    {
-        private readonly List<Meal> meals = new List<Meal>();
-        private readonly List<Ingredient> ingredients = new List<Ingredient>();
-        private readonly List<MealIngredient> mealIngredients = new List<MealIngredient>();
 
-        private int mealIdCounter = 1;
-        private int ingredientIdCounter = 1;
+    {
+
+        private const string _connectionString = "Host = 93.27.145.84; Database=foods;Username=loadev;Password=Zbruhbruh447!;Persist Security Info=True";
 
         public Database()
         {
-            SeedFakeData();
         }
 
-        // All the implemented methods from the contracts
+        public List<Meal> GetAllMeals()
+        {
+            var meals = new List<Meal>();
+
+            using var conn = new NpgsqlConnection(_connectionString);
+            conn.Open();
+
+            const string query = @"
+        SELECT 
+            id, name, mealtype,
+            monday, tuesday, wednesday, thursday, friday, saturday, sunday
+        FROM meals";
+
+            using var cmd = new NpgsqlCommand(query, conn);
+            using var reader = cmd.ExecuteReader();
+
+            while (reader.Read())
+            {
+                meals.Add(new Meal
+                {
+                    Id = reader.GetInt32(0),
+                    Name = reader.GetString(1),
+                    MealType = reader.GetString(2),
+                    Monday = reader.IsDBNull(3) ? 0 : reader.GetInt32(3),
+                    Tuesday = reader.IsDBNull(4) ? 0 : reader.GetInt32(4),
+                    Wednesday = reader.IsDBNull(5) ? 0 : reader.GetInt32(5),
+                    Thursday = reader.IsDBNull(6) ? 0 : reader.GetInt32(6),
+                    Friday = reader.IsDBNull(7) ? 0 : reader.GetInt32(7),
+                    Saturday = reader.IsDBNull(8) ? 0 : reader.GetInt32(8),
+                    Sunday = reader.IsDBNull(9) ? 0 : reader.GetInt32(9)
+                });
+            }
+
+            return meals;
+        }
+
+        public List<Ingredient> GetAllIngredients()
+        {
+            var ingredients = new List<Ingredient>();
+
+            using var conn = new NpgsqlConnection(_connectionString);
+            conn.Open();
+
+            const string query = @"
+        SELECT id, name, unit, inventory, tobebought 
+        FROM ingredients";
+
+            using var cmd = new NpgsqlCommand(query, conn);
+            using var reader = cmd.ExecuteReader();
+
+            while (reader.Read())
+            {
+                ingredients.Add(new Ingredient
+                {
+                    Id = reader.GetInt32(0),
+                    Name = reader.GetString(1),
+                    Unit = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
+                    Inventory = reader.IsDBNull(3) ? 0 : reader.GetDouble(3),
+                    ToBeBought = reader.IsDBNull(4) ? 0 : reader.GetDouble(4)
+                });
+            }
+
+            return ingredients;
+        }
+
+        public List<MealIngredient> GetIngredientsForBreakfast(int mealId)
+        {
+            var result = new List<MealIngredient>();
+
+            using var conn = new NpgsqlConnection(_connectionString);
+            conn.Open();
+
+            const string query = @"
+        SELECT mi.mealid, mi.ingredientid, mi.quantityperperson
+        FROM mealingredient mi
+        JOIN meals m ON mi.mealid = m.id
+        WHERE mi.mealid = @mealId AND m.mealtype = 'Breakfast'";
+
+            using var cmd = new NpgsqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("mealId", mealId);
+
+            using var reader = cmd.ExecuteReader();
+
+            while (reader.Read())
+            {
+                result.Add(new MealIngredient
+                {
+                    MealId = reader.GetInt32(0),
+                    IngredientId = reader.GetInt32(1),
+                    QuantityPerPerson = reader.GetDouble(2)
+                });
+            }
+
+            return result;
+        }
+
+        public List<MealIngredient> GetIngredientsForMeal(int mealId)
+        {
+            var result = new List<MealIngredient>();
+
+            using var conn = new NpgsqlConnection(_connectionString);
+            conn.Open();
+
+            const string query = @"
+        SELECT 
+            mi.mealid, 
+            mi.ingredientid, 
+            mi.quantityperperson,
+            i.name, 
+            i.unit, 
+            i.inventory, 
+            i.tobebought
+        FROM mealingredient mi
+        JOIN ingredients i ON mi.ingredientid = i.id
+        WHERE mi.mealid = @mealId";
+
+            using var cmd = new NpgsqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("mealId", mealId);
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                result.Add(new MealIngredient
+                {
+                    MealId = reader.GetInt32(0),
+                    IngredientId = reader.GetInt32(1),
+                    QuantityPerPerson = reader.GetDouble(2),
+                    Ingredient = new Ingredient
+                    {
+                        Id = reader.GetInt32(1),
+                        Name = reader.GetString(3),
+                        Unit = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
+                        Inventory = reader.IsDBNull(5) ? 0 : reader.GetDouble(5),
+                        ToBeBought = reader.IsDBNull(6) ? 0 : reader.GetDouble(6)
+                    }
+                });
+            }
+
+            return result;
+        }
+
 
         public void AddMeal(Meal meal)
         {
-            meal.Id = mealIdCounter++;
-            meals.Add(meal);
+            using var conn = new NpgsqlConnection(_connectionString);
+            conn.Open();
+
+            const string query = @"
+        INSERT INTO meals (name, mealtype, monday, tuesday, wednesday, thursday, friday, saturday, sunday)
+        VALUES (@name, @mealtype, @monday, @tuesday, @wednesday, @thursday, @friday, @saturday, @sunday)";
+
+            using var cmd = new NpgsqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("name", meal.Name);
+            cmd.Parameters.AddWithValue("mealtype", meal.MealType);
+            cmd.Parameters.AddWithValue("monday", meal.Monday);
+            cmd.Parameters.AddWithValue("tuesday", meal.Tuesday);
+            cmd.Parameters.AddWithValue("wednesday", meal.Wednesday);
+            cmd.Parameters.AddWithValue("thursday", meal.Thursday);
+            cmd.Parameters.AddWithValue("friday", meal.Friday);
+            cmd.Parameters.AddWithValue("saturday", meal.Saturday);
+            cmd.Parameters.AddWithValue("sunday", meal.Sunday);
+
+            cmd.ExecuteNonQuery();
         }
 
         public void AddIngredient(Ingredient ingredient)
         {
-            ingredient.Id = ingredientIdCounter++;
-            ingredients.Add(ingredient);
+            using var conn = new NpgsqlConnection(_connectionString);
+            conn.Open();
+
+            const string query = @"
+        INSERT INTO ingredients (name, unit, inventory, tobebought)
+        VALUES (@name, @unit, @inventory, @tobebought)";
+
+            using var cmd = new NpgsqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("name", ingredient.Name);
+            cmd.Parameters.AddWithValue("unit", ingredient.Unit);
+            cmd.Parameters.AddWithValue("inventory", ingredient.Inventory);
+            cmd.Parameters.AddWithValue("tobebought", ingredient.ToBeBought);
+
+            cmd.ExecuteNonQuery();
         }
 
-        public void AddMealIngredient(string mealName, string ingredientName, double quantityPerPerson)
+        public void AddMealIngredient(string mealName, string ingredientName, double quantity)
         {
-            var meal = meals.FirstOrDefault(m => m.Name == mealName);
-            var ingredient = ingredients.FirstOrDefault(i => i.Name == ingredientName);
+            using var conn = new NpgsqlConnection(_connectionString);
+            conn.Open();
 
-            if (meal == null || ingredient == null)
-                throw new InvalidOperationException("Meal or Ingredient not found.");
-
-            var mealIngredient = new MealIngredient
+            // Step 1: Get meal ID
+            int mealId;
+            using (var getMealCmd = new NpgsqlCommand("SELECT id FROM meals WHERE name = @name", conn))
             {
-                MealId = meal.Id,
-                IngredientId = ingredient.Id,
-                QuantityPerPerson = quantityPerPerson,
-                Meal = meal,
-                Ingredient = ingredient
-            };
+                getMealCmd.Parameters.AddWithValue("name", mealName);
+                mealId = Convert.ToInt32(getMealCmd.ExecuteScalar() ?? throw new Exception("Meal not found"));
+            }
 
-            mealIngredients.Add(mealIngredient);
-        }
+            // Step 2: Get ingredient ID
+            int ingredientId;
+            using (var getIngredientCmd = new NpgsqlCommand("SELECT id FROM ingredients WHERE name = @name", conn))
+            {
+                getIngredientCmd.Parameters.AddWithValue("name", ingredientName);
+                ingredientId = Convert.ToInt32(getIngredientCmd.ExecuteScalar() ?? throw new Exception("Ingredient not found"));
+            }
 
-        public List<Meal> GetAllMeals() => meals;
+            // Step 3: Insert into mealingredient
+            using var insertCmd = new NpgsqlCommand(@"
+        INSERT INTO mealingredient (mealid, ingredientid, quantityperperson)
+        VALUES (@mealid, @ingredientid, @quantity)", conn);
 
-        public List<Ingredient> GetAllIngredients() => ingredients;
+            insertCmd.Parameters.AddWithValue("mealid", mealId);
+            insertCmd.Parameters.AddWithValue("ingredientid", ingredientId);
+            insertCmd.Parameters.AddWithValue("quantity", quantity);
 
-        public List<MealIngredient> GetIngredientsForMeal(int mealId) =>
-            mealIngredients.Where(mi => mi.MealId == mealId).ToList();
-
-        public List<MealIngredient> GetIngredientsForBreakfast(int mealId)
-        {
-            var meal = meals.FirstOrDefault(m => m.Id == mealId);
-            if (meal == null || !string.Equals(meal.MealType, "Breakfast", StringComparison.OrdinalIgnoreCase))
-                return new List<MealIngredient>();
-
-            return GetIngredientsForMeal(mealId);
+            insertCmd.ExecuteNonQuery();
         }
 
         public void Restock()
         {
-            foreach (var ingredient in ingredients)
+            using var conn = new NpgsqlConnection(_connectionString);
+            conn.Open();
+
+            var cmd = new NpgsqlCommand(@"
+        UPDATE ingredients 
+        SET inventory = inventory + tobebought,
+            tobebought = 0", conn);
+
+            cmd.ExecuteNonQuery();
+        }
+
+        public void SaveGroceryListToToBeBought(
+    Dictionary<IInventoryUsageTracker.Days, OneDaysMeals> weeklySelections,
+    Dictionary<string, (double Quantity, string Unit)> groceryList)
+        {
+            using var conn = new NpgsqlConnection(_connectionString);
+            conn.Open();
+
+            // 1. Update ToBeBought for each ingredient
+            foreach (var kvp in groceryList)
             {
-                ingredient.Inventory += ingredient.ToBeBought;
-                ingredient.ToBeBought = 0;
+                var cmd = new NpgsqlCommand("UPDATE ingredients SET tobebought = @qty WHERE name = @name", conn);
+                cmd.Parameters.AddWithValue("qty", kvp.Value.Quantity);
+                cmd.Parameters.AddWithValue("name", kvp.Key);
+                cmd.ExecuteNonQuery();
+            }
+
+            // 2. Reset day counts in all meals
+            var resetCmd = new NpgsqlCommand(@"
+        UPDATE meals 
+        SET monday = 0, tuesday = 0, wednesday = 0, thursday = 0, 
+            friday = 0, saturday = 0, sunday = 0", conn);
+            resetCmd.ExecuteNonQuery();
+
+            // 3. Assign meals to days with people counts
+            foreach (var entry in weeklySelections)
+            {
+                var day = entry.Key.ToString().ToLower(); // matches column names
+                var mealsForDay = entry.Value;
+
+                UpdateMealDayCount(conn, mealsForDay.Breakfast, day, mealsForDay.BreakfastPeople);
+                UpdateMealDayCount(conn, mealsForDay.Lunch, day, mealsForDay.LunchPeople);
+                UpdateMealDayCount(conn, mealsForDay.Dinner, day, mealsForDay.DinnerPeople);
             }
         }
+
+        private void UpdateMealDayCount(NpgsqlConnection conn, string mealName, string dayColumn, int people)
+        {
+            var cmd = new NpgsqlCommand(
+                $"UPDATE meals SET {dayColumn} = @people WHERE name = @name", conn);
+            cmd.Parameters.AddWithValue("people", people);
+            cmd.Parameters.AddWithValue("name", mealName);
+            cmd.ExecuteNonQuery();
+        }
+
         public void CookDayPlan(string day)
         {
-            Func<Meal, int> peopleEating = day.ToLower() switch
-            {
-                "monday" => m => m.Monday,
-                "tuesday" => m => m.Tuesday,
-                "wednesday" => m => m.Wednesday,
-                "thursday" => m => m.Thursday,
-                "friday" => m => m.Friday,
-                "saturday" => m => m.Saturday,
-                "sunday" => m => m.Sunday,
-                _ => _ => 0
-            };
+            using var conn = new NpgsqlConnection(_connectionString);
+            conn.Open();
 
-            foreach (var meal in meals)
-            {
-                int persons = peopleEating(meal);
-                if (persons <= 0) continue;
+            // Step 1: Get meals planned for the given day (people > 0)
+            var cmd = new NpgsqlCommand($@"
+        SELECT id, {day.ToLower()} AS people
+        FROM meals
+        WHERE {day.ToLower()} > 0", conn);
 
-                var mealIngredients = GetIngredientsForMeal(meal.Id);
-                foreach (var mi in mealIngredients)
+            using var reader = cmd.ExecuteReader();
+            var mealsToCook = new List<(int MealId, int People)>();
+            while (reader.Read())
+            {
+                mealsToCook.Add((reader.GetInt32(0), reader.GetInt32(1)));
+            }
+            reader.Close();
+
+            // Step 2: For each meal, get ingredients and update inventory
+            foreach (var (mealId, people) in mealsToCook)
+            {
+                var ingredientCmd = new NpgsqlCommand(@"
+            SELECT ingredientid, quantityperperson
+            FROM mealingredient
+            WHERE mealid = @mealid", conn);
+                ingredientCmd.Parameters.AddWithValue("mealid", mealId);
+
+                using var ingReader = ingredientCmd.ExecuteReader();
+                var ingredientsUsed = new List<(int IngredientId, double UsedQty)>();
+
+                while (ingReader.Read())
                 {
-                    var ingredient = ingredients.FirstOrDefault(i => i.Id == mi.IngredientId);
-                    if (ingredient == null) continue;
+                    int ingId = ingReader.GetInt32(0);
+                    double qtyPerPerson = ingReader.GetDouble(1);
+                    ingredientsUsed.Add((ingId, qtyPerPerson * people));
+                }
+                ingReader.Close();
 
-                    double used = persons * mi.QuantityPerPerson;
-                    ingredient.Inventory -= used;
-                    if (ingredient.Inventory < 0) ingredient.Inventory = 0;
+                foreach (var (ingId, usedQty) in ingredientsUsed)
+                {
+                    var updateCmd = new NpgsqlCommand(@"
+                UPDATE ingredients 
+                SET inventory = GREATEST(inventory - @used, 0)
+                WHERE id = @id", conn);
+
+                    updateCmd.Parameters.AddWithValue("used", usedQty);
+                    updateCmd.Parameters.AddWithValue("id", ingId);
+                    updateCmd.ExecuteNonQuery();
                 }
             }
         }
+
         public void UpdateIngredient(Ingredient updatedIngredient)
         {
-            var existing = ingredients.FirstOrDefault(i => i.Name == updatedIngredient.Name);
-            if (existing != null)
-            {
-                existing.Inventory = updatedIngredient.Inventory;
-            }
-        }
-        public void SaveGroceryListToToBeBought(Dictionary<IInventoryUsageTracker.Days, OneDaysMeals> weeklySelections,
-                                               Dictionary<string, (double Quantity, string Unit)> groceryList)
-        {
-            // 1. Save the grocery quantities to Ingredients
-            foreach (var kvp in groceryList)
-            {
-                var ingredient = ingredients.FirstOrDefault(i => i.Name == kvp.Key);
-                if (ingredient != null)
+            using var conn = new NpgsqlConnection(_connectionString);
+            conn.Open();
 
-                    ingredient.ToBeBought = kvp.Value.Quantity;
-            }
+            var cmd = new NpgsqlCommand(@"
+        UPDATE ingredients 
+        SET inventory = @inv 
+        WHERE name = @name", conn);
 
-            // 2. Reset all day values
-            foreach (var meal in meals)
-            {
-                meal.Monday = meal.Tuesday = meal.Wednesday = meal.Thursday =
-                meal.Friday = meal.Saturday = meal.Sunday = 0;
-            }
+            cmd.Parameters.AddWithValue("inv", updatedIngredient.Inventory);
+            cmd.Parameters.AddWithValue("name", updatedIngredient.Name);
 
-            // 3. For each day in your weeklySelections, assign people counts to each meal
-            foreach (var entry in weeklySelections)
-            {
-                IInventoryUsageTracker.Days day = entry.Key;
-                OneDaysMeals meal = entry.Value;
-
-
-
-                AssignMealToDay(day, meal.Breakfast, meal.BreakfastPeople);
-                AssignMealToDay(day, meal.Lunch, meal.LunchPeople);
-                AssignMealToDay(day, meal.Dinner, meal.DinnerPeople);
-            }
+            cmd.ExecuteNonQuery();
         }
 
-        // Test data
-        private void SeedFakeData()
-        {
-            string[] ingredientNames = {
-        "Eggs", "Milk", "Flour", "Chicken", "Lettuce",
-        "Tomatoes", "Cheese", "Beef", "Onion", "Oats",
-        "Banana", "Yogurt"
-    };
-
-            foreach (var name in ingredientNames)
-            {
-                AddIngredient(new Ingredient
-                {
-                    Name = name,
-                    Unit = GetUnitForIngredient(name),
-                    Inventory = GetInitialInventory(name) // ✅ Set initial inventory
-                });
-            }
-
-            // Meals
-            AddMeal(new Meal { Name = "Pancakes", MealType = "Breakfast" });
-            AddMeal(new Meal { Name = "Oatmeal", MealType = "Breakfast" });
-            AddMeal(new Meal { Name = "Smoothie", MealType = "Breakfast" });
-
-            AddMeal(new Meal { Name = "Grilled Chicken", MealType = "Main" });
-            AddMeal(new Meal { Name = "Tacos", MealType = "Main" });
-            AddMeal(new Meal { Name = "Burger", MealType = "Main" });
-            AddMeal(new Meal { Name = "Salad", MealType = "Main" });
-
-            // Link meals to ingredients
-            AddMealIngredient("Pancakes", "Eggs", 1.5);
-            AddMealIngredient("Pancakes", "Milk", 0.25);
-            AddMealIngredient("Pancakes", "Flour", 0.3);
-
-            AddMealIngredient("Oatmeal", "Oats", 0.5);
-            AddMealIngredient("Oatmeal", "Milk", 0.2);
-            AddMealIngredient("Oatmeal", "Banana", 0.5);
-
-            AddMealIngredient("Smoothie", "Banana", 0.5);
-            AddMealIngredient("Smoothie", "Yogurt", 0.3);
-
-            AddMealIngredient("Grilled Chicken", "Chicken", 1.0);
-            AddMealIngredient("Grilled Chicken", "Onion", 0.2);
-
-            AddMealIngredient("Tacos", "Beef", 0.7);
-            AddMealIngredient("Tacos", "Cheese", 0.1);
-            AddMealIngredient("Tacos", "Tomatoes", 0.3);
-
-            AddMealIngredient("Burger", "Beef", 1.0);
-            AddMealIngredient("Burger", "Lettuce", 0.2);
-            AddMealIngredient("Burger", "Cheese", 0.15);
-
-            AddMealIngredient("Salad", "Lettuce", 0.5);
-            AddMealIngredient("Salad", "Tomatoes", 0.3);
-            AddMealIngredient("Salad", "Onion", 0.2);
-        }
-
-        // Helper to assign units
-        private string GetUnitForIngredient(string name)
-        {
-            return name switch
-            {
-                "Eggs" => "piece",
-                "Milk" => "liter",
-                "Flour" => "kg",
-                "Chicken" => "kg",
-                "Lettuce" => "head",
-                "Tomatoes" => "piece",
-                "Cheese" => "kg",
-                "Beef" => "kg",
-                "Onion" => "piece",
-                "Oats" => "kg",
-                "Banana" => "piece",
-                "Yogurt" => "liter",
-                _ => "unit"
-            };
-        }
-
-        // Helper to assign initial inventory
-        private double GetInitialInventory(string name)
-        {
-            return name switch
-            {
-                "Eggs" => 6,
-                "Milk" => 1.5,
-                "Flour" => 2,
-                "Chicken" => 1,
-                "Lettuce" => 2,
-                "Tomatoes" => 4,
-                "Cheese" => 0.5,
-                "Beef" => 1.2,
-                "Onion" => 3,
-                "Oats" => 1.5,
-                "Banana" => 3,
-                "Yogurt" => 0.75,
-                _ => 0
-            };
-        }
-
-        private void AssignMealToDay( IInventoryUsageTracker.Days day, string mealName, int people)
-        {
-            var meal = meals.FirstOrDefault(m => m.Name == mealName);
-            if (meal == null || people <= 0) return;
-
-            switch(day)
-            {
-                case IInventoryUsageTracker.Days.MONDAY: meal.Monday += people; break;
-                case IInventoryUsageTracker.Days.TUESDAY: meal.Tuesday += people; break;
-                case IInventoryUsageTracker.Days.WEDNESDAY: meal.Wednesday += people; break;
-                case IInventoryUsageTracker.Days.THURSDAY: meal.Thursday += people; break;
-                case IInventoryUsageTracker.Days.FRIDAY: meal.Friday += people; break;
-                case IInventoryUsageTracker.Days.SATURDAY: meal.Saturday += people; break;
-                case IInventoryUsageTracker.Days.SUNDAY: meal.Sunday += people; break;
-            }
-        }
 
     }
-} 
+}

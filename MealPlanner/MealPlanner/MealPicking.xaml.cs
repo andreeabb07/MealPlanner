@@ -1,7 +1,7 @@
-﻿using MealPlanner.Data;
-using MealPlanner.Interfaces;
+﻿using MealPlanner.Interfaces;
 using MealPlanner.Models;
 using MealPlanner.Services;
+using MealPlanner.Data;
 using System;
 using System.Collections.Generic;
 using System.IO;
