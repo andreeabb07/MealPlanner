@@ -8,8 +8,8 @@ namespace MealPlanner.Models
 {
     public class MealIngredient
     {
-        public int MealId { get; set; }
-        public int IngredientId { get; set; }
+        public string MealName { get; set; }
+        public string IngredientName { get; set; }
 
         public double QuantityPerPerson { get; set; }
 

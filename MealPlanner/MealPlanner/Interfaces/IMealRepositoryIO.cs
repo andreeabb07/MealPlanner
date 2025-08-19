@@ -13,9 +13,9 @@ namespace MealPlanner.Interfaces
         List<Ingredient> GetAllIngredients();
 
         // Fetch ingredients for a given meal
-        List<MealIngredient> GetIngredientsForMeal(int mealId);
+        List<MealIngredient> GetIngredientsForMeal(string MealName);
 
-        List<MealIngredient> GetIngredientsForBreakfast(int mealId);
+        List<MealIngredient> GetIngredientsForBreakfast(string mealName);
 
 
         // Add a new meal to the database

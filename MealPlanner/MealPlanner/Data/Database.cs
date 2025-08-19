@@ -28,7 +28,7 @@ namespace MealPlanner.Data
 
             const string query = @"
         SELECT 
-            id, name, mealtype,
+            name, mealtype,
             monday, tuesday, wednesday, thursday, friday, saturday, sunday
         FROM meals";
 
@@ -39,16 +39,15 @@ namespace MealPlanner.Data
             {
                 meals.Add(new Meal
                 {
-                    Id = reader.GetInt32(0),
-                    Name = reader.GetString(1),
-                    MealType = reader.GetString(2),
-                    Monday = reader.IsDBNull(3) ? 0 : reader.GetInt32(3),
-                    Tuesday = reader.IsDBNull(4) ? 0 : reader.GetInt32(4),
-                    Wednesday = reader.IsDBNull(5) ? 0 : reader.GetInt32(5),
-                    Thursday = reader.IsDBNull(6) ? 0 : reader.GetInt32(6),
-                    Friday = reader.IsDBNull(7) ? 0 : reader.GetInt32(7),
-                    Saturday = reader.IsDBNull(8) ? 0 : reader.GetInt32(8),
-                    Sunday = reader.IsDBNull(9) ? 0 : reader.GetInt32(9)
+                    Name = reader.GetString(0),
+                    MealType = reader.GetString(1),
+                    Monday = reader.IsDBNull(2) ? 0 : reader.GetInt32(2),
+                    Tuesday = reader.IsDBNull(3) ? 0 : reader.GetInt32(3),
+                    Wednesday = reader.IsDBNull(4) ? 0 : reader.GetInt32(4),
+                    Thursday = reader.IsDBNull(5) ? 0 : reader.GetInt32(5),
+                    Friday = reader.IsDBNull(6) ? 0 : reader.GetInt32(6),
+                    Saturday = reader.IsDBNull(7) ? 0 : reader.GetInt32(7),
+                    Sunday = reader.IsDBNull(8) ? 0 : reader.GetInt32(8)
                 });
             }
 
@@ -63,7 +62,7 @@ namespace MealPlanner.Data
             conn.Open();
 
             const string query = @"
-        SELECT id, name, unit, inventory, tobebought 
+        SELECT name, unit, inventory, tobebought 
         FROM ingredients";
 
             using var cmd = new NpgsqlCommand(query, conn);
@@ -73,7 +72,6 @@ namespace MealPlanner.Data
             {
                 ingredients.Add(new Ingredient
                 {
-                    Id = reader.GetInt32(0),
                     Name = reader.GetString(1),
                     Unit = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
                     Inventory = reader.IsDBNull(3) ? 0 : reader.GetDouble(3),
@@ -84,7 +82,7 @@ namespace MealPlanner.Data
             return ingredients;
         }
 
-        public List<MealIngredient> GetIngredientsForBreakfast(int mealId)
+        public List<MealIngredient> GetIngredientsForBreakfast(string mealName)
         {
             var result = new List<MealIngredient>();
 
@@ -92,63 +90,32 @@ namespace MealPlanner.Data
             conn.Open();
 
             const string query = @"
-        SELECT mi.mealid, mi.ingredientid, mi.quantityperperson
-        FROM mealingredient mi
-        JOIN meals m ON mi.mealid = m.id
-        WHERE mi.mealid = @mealId AND m.mealtype = 'Breakfast'";
+            SELECT 
+                mi.meal, 
+                mi.ingredient, 
+                mi.quantityperperson,
+                i.name, 
+                i.unit, 
+                i.inventory, 
+                i.tobebought
+            FROM mealingredient mi
+            JOIN meals m ON mi.mealname = m.name
+            JOIN ingredients i ON mi.ingredient = i.name
+            WHERE mi.meal = @mealName AND m.mealtype = 'Breakfast'";
 
             using var cmd = new NpgsqlCommand(query, conn);
-            cmd.Parameters.AddWithValue("mealId", mealId);
-
-            using var reader = cmd.ExecuteReader();
-
-            while (reader.Read())
-            {
-                result.Add(new MealIngredient
-                {
-                    MealId = reader.GetInt32(0),
-                    IngredientId = reader.GetInt32(1),
-                    QuantityPerPerson = reader.GetDouble(2)
-                });
-            }
-
-            return result;
-        }
-
-        public List<MealIngredient> GetIngredientsForMeal(int mealId)
-        {
-            var result = new List<MealIngredient>();
-
-            using var conn = new NpgsqlConnection(_connectionString);
-            conn.Open();
-
-            const string query = @"
-        SELECT 
-            mi.mealid, 
-            mi.ingredientid, 
-            mi.quantityperperson,
-            i.name, 
-            i.unit, 
-            i.inventory, 
-            i.tobebought
-        FROM mealingredient mi
-        JOIN ingredients i ON mi.ingredientid = i.id
-        WHERE mi.mealid = @mealId";
-
-            using var cmd = new NpgsqlCommand(query, conn);
-            cmd.Parameters.AddWithValue("mealId", mealId);
+            cmd.Parameters.AddWithValue("mealName", mealName);
 
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
                 result.Add(new MealIngredient
                 {
-                    MealId = reader.GetInt32(0),
-                    IngredientId = reader.GetInt32(1),
+                    MealName = reader.GetString(0),
+                    IngredientName = reader.GetString(1),
                     QuantityPerPerson = reader.GetDouble(2),
                     Ingredient = new Ingredient
                     {
-                        Id = reader.GetInt32(1),
                         Name = reader.GetString(3),
                         Unit = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
                         Inventory = reader.IsDBNull(5) ? 0 : reader.GetDouble(5),
@@ -160,6 +127,49 @@ namespace MealPlanner.Data
             return result;
         }
 
+        public List<MealIngredient> GetIngredientsForMeal(string mealName)
+        {
+            var result = new List<MealIngredient>();
+
+            using var conn = new NpgsqlConnection(_connectionString);
+            conn.Open();
+
+            const string query = @"
+            SELECT 
+                mi.meal, 
+                mi.ingredient, 
+                mi.quantityperperson,
+                i.name, 
+                i.unit, 
+                i.inventory, 
+                i.tobebought
+            FROM mealingredient mi
+            JOIN ingredients i ON mi.ingredient = i.name
+            WHERE mi.meal = @mealName";
+
+            using var cmd = new NpgsqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("mealName", mealName);
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                result.Add(new MealIngredient
+                {
+                    MealName = reader.GetString(0),
+                    IngredientName = reader.GetString(1),
+                    QuantityPerPerson = reader.GetDouble(2),
+                    Ingredient = new Ingredient
+                    {
+                        Name = reader.GetString(3),
+                        Unit = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
+                        Inventory = reader.IsDBNull(5) ? 0 : reader.GetDouble(5),
+                        ToBeBought = reader.IsDBNull(6) ? 0 : reader.GetDouble(6)
+                    }
+                });
+            }
+
+            return result;
+        }
 
         public void AddMeal(Meal meal)
         {
@@ -167,8 +177,8 @@ namespace MealPlanner.Data
             conn.Open();
 
             const string query = @"
-        INSERT INTO meals (name, mealtype, monday, tuesday, wednesday, thursday, friday, saturday, sunday)
-        VALUES (@name, @mealtype, @monday, @tuesday, @wednesday, @thursday, @friday, @saturday, @sunday)";
+            INSERT INTO meals (name, mealtype, monday, tuesday, wednesday, thursday, friday, saturday, sunday)
+            VALUES (@name, @mealtype, @monday, @tuesday, @wednesday, @thursday, @friday, @saturday, @sunday)";
 
             using var cmd = new NpgsqlCommand(query, conn);
             cmd.Parameters.AddWithValue("name", meal.Name);
@@ -186,6 +196,9 @@ namespace MealPlanner.Data
 
         public void AddIngredient(Ingredient ingredient)
         {
+            if (string.IsNullOrWhiteSpace(ingredient.Name))
+                throw new ArgumentException("Ingredient name cannot be null or empty.", nameof(ingredient));
+
             using var conn = new NpgsqlConnection(_connectionString);
             conn.Open();
 
@@ -195,7 +208,7 @@ namespace MealPlanner.Data
 
             using var cmd = new NpgsqlCommand(query, conn);
             cmd.Parameters.AddWithValue("name", ingredient.Name);
-            cmd.Parameters.AddWithValue("unit", ingredient.Unit);
+            cmd.Parameters.AddWithValue("unit", ingredient.Unit ?? string.Empty);
             cmd.Parameters.AddWithValue("inventory", ingredient.Inventory);
             cmd.Parameters.AddWithValue("tobebought", ingredient.ToBeBought);
 
@@ -204,32 +217,40 @@ namespace MealPlanner.Data
 
         public void AddMealIngredient(string mealName, string ingredientName, double quantity)
         {
+            if (string.IsNullOrWhiteSpace(mealName))
+                throw new ArgumentException("Meal name cannot be null or empty.", nameof(mealName));
+
+            if (string.IsNullOrWhiteSpace(ingredientName))
+                throw new ArgumentException("Ingredient name cannot be null or empty.", nameof(ingredientName));
+
             using var conn = new NpgsqlConnection(_connectionString);
             conn.Open();
 
-            // Step 1: Get meal ID
-            int mealId;
-            using (var getMealCmd = new NpgsqlCommand("SELECT id FROM meals WHERE name = @name", conn))
+            // Check if meal exists
+            using (var checkMealCmd = new NpgsqlCommand(
+                "SELECT 1 FROM meals WHERE name = @mealName", conn))
             {
-                getMealCmd.Parameters.AddWithValue("name", mealName);
-                mealId = Convert.ToInt32(getMealCmd.ExecuteScalar() ?? throw new Exception("Meal not found"));
+                checkMealCmd.Parameters.AddWithValue("mealName", mealName);
+                if (checkMealCmd.ExecuteScalar() == null)
+                    throw new InvalidOperationException($"Meal '{mealName}' not found in meals table.");
             }
 
-            // Step 2: Get ingredient ID
-            int ingredientId;
-            using (var getIngredientCmd = new NpgsqlCommand("SELECT id FROM ingredients WHERE name = @name", conn))
+            // Check if ingredient exists
+            using (var checkIngredientCmd = new NpgsqlCommand(
+                "SELECT 1 FROM ingredients WHERE name = @ingredientName", conn))
             {
-                getIngredientCmd.Parameters.AddWithValue("name", ingredientName);
-                ingredientId = Convert.ToInt32(getIngredientCmd.ExecuteScalar() ?? throw new Exception("Ingredient not found"));
+                checkIngredientCmd.Parameters.AddWithValue("ingredientName", ingredientName);
+                if (checkIngredientCmd.ExecuteScalar() == null)
+                    throw new InvalidOperationException($"Ingredient '{ingredientName}' not found in ingredients table.");
             }
 
-            // Step 3: Insert into mealingredient
+            // Insert into mealingredient
             using var insertCmd = new NpgsqlCommand(@"
-        INSERT INTO mealingredient (mealid, ingredientid, quantityperperson)
-        VALUES (@mealid, @ingredientid, @quantity)", conn);
+        INSERT INTO mealingredient (mealname, ingredientname, quantityperperson)
+        VALUES (@mealName, @ingredientName, @quantity)", conn);
 
-            insertCmd.Parameters.AddWithValue("mealid", mealId);
-            insertCmd.Parameters.AddWithValue("ingredientid", ingredientId);
+            insertCmd.Parameters.AddWithValue("mealName", mealName);
+            insertCmd.Parameters.AddWithValue("ingredientName", ingredientName);
             insertCmd.Parameters.AddWithValue("quantity", quantity);
 
             insertCmd.ExecuteNonQuery();
@@ -292,6 +313,7 @@ namespace MealPlanner.Data
             cmd.ExecuteNonQuery();
         }
 
+        // this function is not done yet
         public void CookDayPlan(string day)
         {
             using var conn = new NpgsqlConnection(_connectionString);
@@ -360,7 +382,5 @@ namespace MealPlanner.Data
 
             cmd.ExecuteNonQuery();
         }
-
-
     }
 }

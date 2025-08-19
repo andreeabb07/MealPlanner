@@ -8,7 +8,6 @@ namespace MealPlanner.Models
 {
     public class Meal
     {
-        public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string MealType { get; set; } = string.Empty;
         public List<MealIngredient> Ingredients { get; set; } = new();
