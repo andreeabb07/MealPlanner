@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace MealPlanner.Services;
 
-public class GroceryListGenerator : IGroceryListGenerator
+public class GroceryListGenerator
 {
     private readonly IDatabase _database;
     public GroceryListGenerator(IDatabase database)
@@ -39,30 +39,39 @@ public class GroceryListGenerator : IGroceryListGenerator
     // the AddMealToGroceryList, takes as argument the name of the meal (pancake) and nb. of people (2)
     void AddMealToGroceryList(string mealName, int people, Dictionary<string, (double Quantity, string Unit)> ingredients)
     {
-        // once I have the meal name, I select an object from the list of type Meals, whose .Name == the name that I have in my selection
         var meal = _database.GetAllMeals().FirstOrDefault(m => m.Name == mealName);
         if (meal == null) return;
 
-        // now I take the ID of the selected meal and I run the method that returns me the list of ingredients for that specific meal
         var mealIngredients = _database.GetIngredientsForMeal(meal.Name);
 
-        // then for each ingredient in that list of ingredients (objects of type Ingredient), I save the name, the calculated quantity
-        // then if the dictionary that was intially created already exists the key, then I take the value corresponding to that ingredient (that is a tuple), and I add to iy the additional quantity
         foreach (var mi in mealIngredients)
         {
-            string? name = mi.Ingredient.Name;
-            double quantity = Math.Round(mi.QuantityPerPerson * people, 1);
-            string? unit = mi.Ingredient.Unit ?? "unit";
+            var ingredient = mi.Ingredient;
+            if (ingredient?.Name == null) continue;
 
-            if (name is not null && ingredients.ContainsKey(name))
+            double needed = Math.Round(mi.QuantityPerPerson * people, 1);
+
+            // Check if enough inventory exists
+            if (ingredient.Inventory >= needed)
             {
-                var current = ingredients[name];
-                ingredients[name] = (current.Quantity + quantity, unit);
+                // If there is already in stock, it skips this ingredient
+                continue;
             }
-            else if (name is not null)
+
+            // If not enough stock :
+            double toBuy = ingredient.MinBuyQuantity > 0 ? ingredient.MinBuyQuantity : needed;
+            string unit = ingredient.Unit ?? "unit";
+
+            if (ingredients.ContainsKey(ingredient.Name))
             {
-                ingredients[name] = (quantity, unit);
+                var current = ingredients[ingredient.Name];
+                ingredients[ingredient.Name] = (current.Quantity + toBuy, unit);
+            }
+            else
+            {
+                ingredients[ingredient.Name] = (toBuy, unit);
             }
         }
     }
+
 }

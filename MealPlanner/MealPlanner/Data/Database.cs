@@ -62,7 +62,7 @@ namespace MealPlanner.Data
             conn.Open();
 
             const string query = @"
-        SELECT name, unit, inventory, tobebought 
+        SELECT name, unit, inventory, tobebought, calories, minbuyquantity 
         FROM ingredients";
 
             using var cmd = new NpgsqlCommand(query, conn);
@@ -72,10 +72,12 @@ namespace MealPlanner.Data
             {
                 ingredients.Add(new Ingredient
                 {
-                    Name = reader.GetString(1),
-                    Unit = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
-                    Inventory = reader.IsDBNull(3) ? 0 : reader.GetDouble(3),
-                    ToBeBought = reader.IsDBNull(4) ? 0 : reader.GetDouble(4)
+                    Name = reader.GetString(0),
+                    Unit = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
+                    Inventory = reader.IsDBNull(2) ? 0 : reader.GetDouble(2),
+                    ToBeBought = reader.IsDBNull(3) ? 0 : reader.GetDouble(3),
+                    Calories = reader.IsDBNull(4) ? 0 : reader.GetDouble(4),
+                    MinBuyQuantity = reader.IsDBNull(5) ? 0 : reader.GetDouble(5)
                 });
             }
 
@@ -98,6 +100,8 @@ namespace MealPlanner.Data
                 i.unit, 
                 i.inventory, 
                 i.tobebought
+                i.calories,
+                i.minbuyquantity
             FROM mealingredient mi
             JOIN meals m ON mi.mealname = m.name
             JOIN ingredients i ON mi.ingredient = i.name
@@ -119,7 +123,9 @@ namespace MealPlanner.Data
                         Name = reader.GetString(3),
                         Unit = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
                         Inventory = reader.IsDBNull(5) ? 0 : reader.GetDouble(5),
-                        ToBeBought = reader.IsDBNull(6) ? 0 : reader.GetDouble(6)
+                        ToBeBought = reader.IsDBNull(6) ? 0 : reader.GetDouble(6),
+                        Calories = reader.IsDBNull(7) ? 0 : reader.GetDouble(7),
+                        MinBuyQuantity = reader.IsDBNull(8) ? 0 : reader.GetDouble(8)
                     }
                 });
             }
@@ -142,7 +148,9 @@ namespace MealPlanner.Data
                 i.name, 
                 i.unit, 
                 i.inventory, 
-                i.tobebought
+                i.tobebought,
+                i.calories,
+                i.minbuyquantity
             FROM mealingredient mi
             JOIN ingredients i ON mi.ingredient = i.name
             WHERE mi.meal = @mealName";
@@ -163,7 +171,9 @@ namespace MealPlanner.Data
                         Name = reader.GetString(3),
                         Unit = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
                         Inventory = reader.IsDBNull(5) ? 0 : reader.GetDouble(5),
-                        ToBeBought = reader.IsDBNull(6) ? 0 : reader.GetDouble(6)
+                        ToBeBought = reader.IsDBNull(6) ? 0 : reader.GetDouble(6),
+                        Calories = reader.IsDBNull(7) ? 0 : reader.GetDouble(7),
+                        MinBuyQuantity = reader.IsDBNull(8) ? 0 : reader.GetDouble(8)
                     }
                 });
             }
@@ -202,17 +212,35 @@ namespace MealPlanner.Data
             using var conn = new NpgsqlConnection(_connectionString);
             conn.Open();
 
+            // Check if ingredient already exists
+            using (var checkCmd = new NpgsqlCommand("SELECT 1 FROM ingredients WHERE name = @name", conn))
+            {
+                checkCmd.Parameters.AddWithValue("name", ingredient.Name);
+
+                var exists = checkCmd.ExecuteScalar();
+                if (exists != null)
+                {
+                    Console.WriteLine($"Ingredient '{ingredient.Name}' is already in the list.");
+                    return;
+                }
+            }
+
+            // Insert new ingredient
             const string query = @"
-        INSERT INTO ingredients (name, unit, inventory, tobebought)
-        VALUES (@name, @unit, @inventory, @tobebought)";
+        INSERT INTO ingredients (name, unit, inventory, tobebought, calories, minbuyquantity)
+        VALUES (@name, @unit, @inventory, @tobebought, @calories, @minbuyquantity)";
 
-            using var cmd = new NpgsqlCommand(query, conn);
-            cmd.Parameters.AddWithValue("name", ingredient.Name);
-            cmd.Parameters.AddWithValue("unit", ingredient.Unit ?? string.Empty);
-            cmd.Parameters.AddWithValue("inventory", ingredient.Inventory);
-            cmd.Parameters.AddWithValue("tobebought", ingredient.ToBeBought);
+            using (var cmd = new NpgsqlCommand(query, conn))
+            {
+                cmd.Parameters.AddWithValue("name", ingredient.Name);
+                cmd.Parameters.AddWithValue("unit", ingredient.Unit ?? string.Empty);
+                cmd.Parameters.AddWithValue("inventory", ingredient.Inventory);
+                cmd.Parameters.AddWithValue("tobebought", ingredient.ToBeBought);
+                cmd.Parameters.AddWithValue("calories", ingredient.Calories);
+                cmd.Parameters.AddWithValue("minbuyquantity", ingredient.MinBuyQuantity);
 
-            cmd.ExecuteNonQuery();
+                cmd.ExecuteNonQuery();
+            }
         }
 
         public void AddMealIngredient(string mealName, string ingredientName, double quantity)

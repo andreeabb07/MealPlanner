@@ -18,6 +18,9 @@ namespace MealPlanner.Models
 
         // a column property in my database that holds the value for how much of that ingredient needs to be bought based on my meal plan for that week
         public double ToBeBought { get; set; }
+        public double Calories { get; set; }
+
+        public double MinBuyQuantity { get; set; }
 
     }
 
