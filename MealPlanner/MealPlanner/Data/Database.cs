@@ -310,7 +310,9 @@ namespace MealPlanner.Data
                 var cmd = new NpgsqlCommand("UPDATE ingredients SET tobebought = @qty WHERE name = @name", conn);
                 cmd.Parameters.AddWithValue("qty", kvp.Value.Quantity);
                 cmd.Parameters.AddWithValue("name", kvp.Key);
-                cmd.ExecuteNonQuery();
+                int rows = cmd.ExecuteNonQuery();
+                Console.WriteLine($"Updating {kvp.Key}: {rows} rows affected");
+                //cmd.ExecuteNonQuery();
             }
 
             // 2. Reset day counts in all meals
@@ -334,8 +336,13 @@ namespace MealPlanner.Data
 
         private void UpdateMealDayCount(NpgsqlConnection conn, string mealName, string dayColumn, int people)
         {
+            if (string.IsNullOrWhiteSpace(mealName) || mealName.Equals("No selection", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            mealName = mealName.Trim();  // removes white spaces before and after the name of the meal
+
             var cmd = new NpgsqlCommand(
-                $"UPDATE meals SET {dayColumn} = @people WHERE name = @name", conn);
+                $"UPDATE meals SET \"{dayColumn}\" = @people WHERE name = @name", conn);
             cmd.Parameters.AddWithValue("people", people);
             cmd.Parameters.AddWithValue("name", mealName);
             cmd.ExecuteNonQuery();
