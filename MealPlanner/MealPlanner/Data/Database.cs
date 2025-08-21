@@ -304,15 +304,18 @@ namespace MealPlanner.Data
             using var conn = new NpgsqlConnection(_connectionString);
             conn.Open();
 
-            // 1. Update ToBeBought for each ingredient
+            // 0. Reset tobebought for all ingredients
+            var resetTobeBoughtCmd = new NpgsqlCommand("UPDATE ingredients SET tobebought = 0", conn);
+            resetTobeBoughtCmd.ExecuteNonQuery();
+
+            // 1. Update ToBeBought for each ingredient from the grocery list
             foreach (var kvp in groceryList)
             {
                 var cmd = new NpgsqlCommand("UPDATE ingredients SET tobebought = @qty WHERE name = @name", conn);
                 cmd.Parameters.AddWithValue("qty", kvp.Value.Quantity);
-                cmd.Parameters.AddWithValue("name", kvp.Key);
+                cmd.Parameters.AddWithValue("name", kvp.Key.Trim());  // trim to avoid whitespace issues
                 int rows = cmd.ExecuteNonQuery();
                 Console.WriteLine($"Updating {kvp.Key}: {rows} rows affected");
-                //cmd.ExecuteNonQuery();
             }
 
             // 2. Reset day counts in all meals
@@ -328,9 +331,9 @@ namespace MealPlanner.Data
                 var day = entry.Key.ToString().ToLower(); // matches column names
                 var mealsForDay = entry.Value;
 
-                UpdateMealDayCount(conn, mealsForDay.Breakfast, day, mealsForDay.BreakfastPeople);
-                UpdateMealDayCount(conn, mealsForDay.Lunch, day, mealsForDay.LunchPeople);
-                UpdateMealDayCount(conn, mealsForDay.Dinner, day, mealsForDay.DinnerPeople);
+                UpdateMealDayCount(conn, mealsForDay.Breakfast.Trim(), day, mealsForDay.BreakfastPeople);
+                UpdateMealDayCount(conn, mealsForDay.Lunch.Trim(), day, mealsForDay.LunchPeople);
+                UpdateMealDayCount(conn, mealsForDay.Dinner.Trim(), day, mealsForDay.DinnerPeople);
             }
         }
 
