@@ -357,51 +357,67 @@ namespace MealPlanner.Data
             using var conn = new NpgsqlConnection(_connectionString);
             conn.Open();
 
+            string dayColumn = day.ToLower();
+
             // Step 1: Get meals planned for the given day (people > 0)
             var cmd = new NpgsqlCommand($@"
-        SELECT id, {day.ToLower()} AS people
-        FROM meals
-        WHERE {day.ToLower()} > 0", conn);
+SELECT name, {dayColumn} AS people
+FROM meals
+WHERE {dayColumn} > 0", conn);
 
             using var reader = cmd.ExecuteReader();
-            var mealsToCook = new List<(int MealId, int People)>();
+            var mealsToCook = new List<(string MealName, int People)>();
             while (reader.Read())
             {
-                mealsToCook.Add((reader.GetInt32(0), reader.GetInt32(1)));
+                mealsToCook.Add((reader.GetString(0).Trim(), reader.GetInt32(1)));
             }
             reader.Close();
 
             // Step 2: For each meal, get ingredients and update inventory
-            foreach (var (mealId, people) in mealsToCook)
+            foreach (var (mealName, people) in mealsToCook)
             {
                 var ingredientCmd = new NpgsqlCommand(@"
-            SELECT ingredientid, quantityperperson
-            FROM mealingredient
-            WHERE mealid = @mealid", conn);
-                ingredientCmd.Parameters.AddWithValue("mealid", mealId);
+                SELECT i.name AS ingredient_name, mi.quantityperperson
+                FROM mealingredient mi
+                JOIN ingredients i ON mi.ingredient = i.name
+                WHERE mi.meal = @mealname", conn);
+
+                ingredientCmd.Parameters.AddWithValue("mealname", mealName);
 
                 using var ingReader = ingredientCmd.ExecuteReader();
-                var ingredientsUsed = new List<(int IngredientId, double UsedQty)>();
+                var ingredientsUsed = new List<(string IngredientName, double UsedQty)>();
 
                 while (ingReader.Read())
                 {
-                    int ingId = ingReader.GetInt32(0);
+                    string ingName = ingReader.GetString(0).Trim();
                     double qtyPerPerson = ingReader.GetDouble(1);
-                    ingredientsUsed.Add((ingId, qtyPerPerson * people));
+                    ingredientsUsed.Add((ingName, qtyPerPerson * people));
                 }
                 ingReader.Close();
 
-                foreach (var (ingId, usedQty) in ingredientsUsed)
+                foreach (var (ingName, usedQty) in ingredientsUsed)
                 {
                     var updateCmd = new NpgsqlCommand(@"
-                UPDATE ingredients 
+                UPDATE ingredients
                 SET inventory = GREATEST(inventory - @used, 0)
-                WHERE id = @id", conn);
+                WHERE name = @name", conn);
 
                     updateCmd.Parameters.AddWithValue("used", usedQty);
-                    updateCmd.Parameters.AddWithValue("id", ingId);
+                    updateCmd.Parameters.AddWithValue("name", ingName);
                     updateCmd.ExecuteNonQuery();
                 }
+            }
+
+            // Step 3: Reset the day's count for all cooked meals at once
+            if (mealsToCook.Count > 0)
+            {
+                var mealNames = string.Join(",", mealsToCook.Select(m => $"'{m.MealName.Replace("'", "''")}'"));
+                var resetDayCmd = new NpgsqlCommand($@"
+                UPDATE meals
+                SET {dayColumn} = 0
+                WHERE name IN ({mealNames})", conn);
+
+                resetDayCmd.ExecuteNonQuery();
             }
         }
 
