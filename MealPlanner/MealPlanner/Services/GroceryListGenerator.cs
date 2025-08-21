@@ -11,67 +11,57 @@ public class GroceryListGenerator
     private readonly IDatabase _database;
     public GroceryListGenerator(IDatabase database)
     {
-        _database = database;
+        _database = database; 
     }
 
     public Dictionary<string, (double Quantity, string Unit)> GenerateGroceryList(
-       Dictionary<IInventoryUsageTracker.Days, OneDaysMeals> selections)
+        Dictionary<IInventoryUsageTracker.Days, OneDaysMeals> selections)
     {
-        // for my grocery list, I need a dictionary that will save the ingredients I need, their quantity and their unit
-        var ingredients = new Dictionary<string, (double Quantity, string Unit)>();
-
-        // then, for each element from my dictionary called 'selections', I call the function addMeal for breakfast lunch and so on, and I return these ingredients
-        // selections is a dictionary that has (key - MONDAY : value - an OneDaysMeal object that has all of these monday.Breakfast (=pancakes for ex), monday.Lunch, monday.Dinner, monday.BreakfastPeople, etc etc etc),
-        // where 'monday' is a object of type OneDaysMeals, and 'MONDAY" is an element of an enumeration
-
-        // selection.Values gives me a collection of all the values from that dictionary
+        // 1. Gather all ingredient needs per meal
+        var allIngredientNeeds = new List<(Ingredient Ingredient, double Needed)>();
 
         foreach (var day in selections.Values)
         {
-            AddMealToGroceryList(day.Breakfast, day.BreakfastPeople, ingredients);
-            AddMealToGroceryList(day.Lunch, day.LunchPeople, ingredients);
-            AddMealToGroceryList(day.Dinner, day.DinnerPeople, ingredients);
+            allIngredientNeeds.AddRange(GetMealIngredients(day.Breakfast, day.BreakfastPeople));
+            allIngredientNeeds.AddRange(GetMealIngredients(day.Lunch, day.LunchPeople));
+            allIngredientNeeds.AddRange(GetMealIngredients(day.Dinner, day.DinnerPeople));
         }
-        return ingredients;
+
+        // 2. Aggregate quantities by ingredient name (LINQ grouping and prokjections, more concise than foreach)
+        var cumulativeNeeds = allIngredientNeeds
+            .GroupBy(x => x.Ingredient.Name) // group by ingredient
+            .ToDictionary(
+                g => g.Key!,
+                g => (Ingredient: g.First().Ingredient, TotalNeeded: g.Sum(x => x.Needed)) // total quantity needed
+            );
+
+        // 3. Calculate actual quantities to buy based on inventory and min buy rules
+        var groceryList = new Dictionary<string, (double Quantity, string Unit)>();
+        foreach (var entry in cumulativeNeeds)
+        {
+            var ingredient = entry.Value.Ingredient;
+            var toBuy = ingredient.GetPurchaseQuantity(entry.Value.TotalNeeded); // encapsulated logic for purchase qty
+            if (toBuy <= 0) continue; // skip if enough in inventory
+
+            string unit = ingredient.Unit ?? "unit"; // default unit
+            groceryList[ingredient.Name!] = (toBuy, unit); // add to final grocery list
+        }
+
+        return groceryList;
     }
 
-
-    // the AddMealToGroceryList, takes as argument the name of the meal (pancake) and nb. of people (2)
-    void AddMealToGroceryList(string mealName, int people, Dictionary<string, (double Quantity, string Unit)> ingredients)
+    // Returns ingredient quantities needed for a single meal
+    private List<(Ingredient Ingredient, double Needed)> GetMealIngredients(string mealName, int people)
     {
         var meal = _database.GetAllMeals().FirstOrDefault(m => m.Name == mealName);
-        if (meal == null) return;
+        if (meal == null) return new List<(Ingredient, double)>(); // meal not found
 
         var mealIngredients = _database.GetIngredientsForMeal(meal.Name);
 
-        foreach (var mi in mealIngredients)
-        {
-            var ingredient = mi.Ingredient;
-            if (ingredient?.Name == null) continue;
-
-            double needed = Math.Round(mi.QuantityPerPerson * people, 1);
-
-            // Check if enough inventory exists
-            if (ingredient.Inventory >= needed)
-            {
-                // If there is already in stock, it skips this ingredient
-                continue;
-            }
-
-            // If not enough stock :
-            double toBuy = ingredient.MinBuyQuantity > 0 ? ingredient.MinBuyQuantity : needed;
-            string unit = ingredient.Unit ?? "unit";
-
-            if (ingredients.ContainsKey(ingredient.Name))
-            {
-                var current = ingredients[ingredient.Name];
-                ingredients[ingredient.Name] = (current.Quantity + toBuy, unit);
-            }
-            else
-            {
-                ingredients[ingredient.Name] = (toBuy, unit);
-            }
-        }
+        // calculate total needed per ingredient for the given number of people
+        return mealIngredients
+            .Where(mi => mi.Ingredient?.Name != null)
+            .Select(mi => (mi.Ingredient!, Math.Round(mi.QuantityPerPerson * people, 1)))
+            .ToList();
     }
-
 }

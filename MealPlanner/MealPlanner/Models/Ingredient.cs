@@ -22,6 +22,22 @@ namespace MealPlanner.Models
 
         public double MinBuyQuantity { get; set; }
 
+        // Encapsulates purchase logic here so data and behavior stay together, avoiding duplication.
+        public double GetPurchaseQuantity(double requiredQuantity)
+        {
+            if (Inventory >= requiredQuantity)
+                return 0; // we already have enough
+
+            double missing = requiredQuantity - Inventory;
+
+            if (MinBuyQuantity > 0)
+            {
+                int multiples = (int)Math.Ceiling(missing / MinBuyQuantity);
+                return multiples * MinBuyQuantity;
+            }
+
+            return missing; // if MinBuyQuantity == 0
+        }
     }
 
 }
